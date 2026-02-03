@@ -368,6 +368,18 @@ function Race3DCanvas() {
             if (horse.position.x > leaderX) leaderX = horse.position.x;
             if (horse.position.x >= finishLineX.current) {
                horse.userData.finished = true;
+               // Stop running and play idle
+               const mixer = mixersRef.current[idx];
+               if (mixer) {
+                 mixer.stopAllAction();
+                 if (horseAnimations) {
+                   const idleAnim = horseAnimations.find(c => c.name.toLowerCase().includes('idle') || c.name.toLowerCase().includes('stand'));
+                   if (idleAnim) {
+                     const action = mixer.clipAction(idleAnim);
+                     action.play();
+                   }
+                 }
+               }
             }
             
             // Orient Horse: Face the Finish Line (+X)
