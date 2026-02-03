@@ -14,6 +14,8 @@ function Race3DCanvas() {
   const containerRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [raceStarted, setRaceStarted] = useState(false);
+  const raceStartedRef = useRef(false);
   
   // Refs for cleanup
   const sceneRef = useRef(null);
@@ -24,6 +26,7 @@ function Race3DCanvas() {
   const raceDataRef = useRef(null);
   const finishLineX = useRef(250); // Race along X-axis now
   const cameraRef = useRef(null);
+  const onStartRace = useRef(null);
 
   useEffect(() => {
     let mounted = true;
@@ -226,6 +229,15 @@ function Race3DCanvas() {
            finish.position.set(finishLineX.current, 0.2, 0); // X-axis finish
            scene.add(finish);
 
+           // 2.5 Start Line
+           const startLine = new THREE.Mesh(
+             new THREE.PlaneGeometry(5, 160), 
+             new THREE.MeshStandardMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0.5 })
+           );
+           startLine.rotation.x = -Math.PI / 2;
+           startLine.position.set(-50, 0.15, 0);
+           scene.add(startLine);
+
            // 3. Horses
            // Dynamic Lane Calculation for 8 horses
            const laneSpacing = 15;
@@ -275,20 +287,14 @@ function Race3DCanvas() {
              // Animation Mixer
              const mixer = new THREE.AnimationMixer(horseInstance);
              if (horseAnimations && horseAnimations.length > 0) {
-               // Find the specific running animation (note semicolon in name)
-               const runAnimation = horseAnimations.find(clip => 
-                 clip.name === "HorseALL_RunLoop"
-               );
+               // Initially Play IDLE
+               const idleAnim = horseAnimations.find(c => c.name.toLowerCase().includes('idle') || c.name.toLowerCase().includes('stand'));
+               const runAnim = horseAnimations.find(c => c.name === "HorseALL_RunLoop");
                
-               if (runAnimation) {
-                 console.log(`🏇 Playing Animation for Horse ${i}:`, runAnimation.name, `Duration: ${runAnimation.duration.toFixed(2)}s`);
-                 const action = mixer.clipAction(runAnimation);
-                 action.setLoop(THREE.LoopRepeat); // Loop indefinitely
-                 action.play();
-               } else {
-                 console.warn(`⚠️ HorseAll_RunLoop not found for horse ${i}. Available:`, horseAnimations.map(c => c.name));
-                 // Fallback to first animation
-                 const action = mixer.clipAction(horseAnimations[0]);
+               const initialAnim = idleAnim || runAnim || horseAnimations[0];
+               
+               if (initialAnim) {
+                 const action = mixer.clipAction(initialAnim);
                  action.setLoop(THREE.LoopRepeat);
                  action.play();
                }
@@ -342,6 +348,21 @@ function Race3DCanvas() {
            });
         };
 
+        // Define Start Handler
+        onStartRace.current = () => {
+             mixersRef.current.forEach((mixer) => {
+                 mixer.stopAllAction();
+                 if (horseAnimations) {
+                     const runAnim = horseAnimations.find(c => c.name === "HorseALL_RunLoop") || horseAnimations[0];
+                     if (runAnim) {
+                         const action = mixer.clipAction(runAnim);
+                         action.setLoop(THREE.LoopRepeat);
+                         action.play();
+                     }
+                 }
+             });
+        };
+
         const animate = () => {
           if (!mounted) return;
           requestAnimationFrame(animate);
@@ -355,6 +376,7 @@ function Race3DCanvas() {
           // Move Horses along X
           horsesRef.current.forEach((horse, idx) => {
             if (horse.userData.finished) return;
+            if (!raceStartedRef.current) return; // Wait for Start
 
             let speed = horse.userData.speed * 10 * delta; // Adjust speed scale
             
@@ -419,6 +441,8 @@ function Race3DCanvas() {
     cleanupScene();
     init();
 
+
+
     return () => {
       mounted = false;
       window.removeEventListener('resize', handleResize);
@@ -431,6 +455,23 @@ function Race3DCanvas() {
        <div className="race-header">
          <h1>🏇 3D Horse Racing Simulator</h1>
          <p className="dimension-badge">⚡ Real-Time 3D Models</p>
+         {!raceStarted && !loading && (
+            <button 
+              style={{
+                marginTop: '10px', padding: '10px 30px', fontSize: '20px', 
+                background: '#FFD700', border: 'none', borderRadius: '50px', 
+                cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+                pointerEvents: 'auto', zIndex: 100, position: 'relative'
+              }}
+              onClick={() => {
+                setRaceStarted(true);
+                raceStartedRef.current = true;
+                if (onStartRace.current) onStartRace.current();
+              }}
+            >
+              START RACE 🏁
+            </button>
+          )}
        </div>
        <div ref={containerRef} className="threejs-container" style={{ width: '100%', height: '600px', background: '#000', borderRadius: '20px', overflow: 'hidden' }}>
          {loading && <div style={{position:'absolute',color:'white',top:'50%',left:'50%',transform:'translate(-50%,-50%)'}}>Loading 3D Models...</div>}
