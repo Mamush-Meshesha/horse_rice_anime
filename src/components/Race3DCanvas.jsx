@@ -453,7 +453,7 @@ function Race3DCanvas() {
   return (
     <div className="race-canvas-container">
        <div className="race-header">
-         <h1>🏇 3D Horse Racing Simulator</h1>
+         {/* <h1>🏇 3D Horse Racing Simulator</h1> */}
          <p className="dimension-badge">⚡ Real-Time 3D Models</p>
          {!raceStarted && !loading && (
             <button 
