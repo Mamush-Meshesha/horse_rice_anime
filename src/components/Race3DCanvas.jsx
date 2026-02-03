@@ -76,6 +76,11 @@ function Race3DCanvas() {
             { id: 1, speed: 1.2 },
             { id: 2, speed: 1.05 },
             { id: 3, speed: 1.0 },
+            { id: 4, speed: 1.1 },
+            { id: 5, speed: 1.15 },
+            { id: 6, speed: 0.95 },
+            { id: 7, speed: 1.08 },
+            { id: 8, speed: 1.02 },
           ],
         };
 
@@ -202,9 +207,9 @@ function Race3DCanvas() {
         };
 
         const setupRace = () => {
-           // 1. Track (Floor Graphic)
+           // 1. Track (Floor Graphic) (Wider for 8 lanes)
            const track = new THREE.Mesh(
-             new THREE.PlaneGeometry(600, 60), 
+             new THREE.PlaneGeometry(600, 160), 
              new THREE.MeshStandardMaterial({ map: trackTex })
            );
            track.rotation.x = -Math.PI / 2;
@@ -212,9 +217,9 @@ function Race3DCanvas() {
            track.receiveShadow = true;
            scene.add(track);
 
-           // 2. Finish Line
+           // 2. Finish Line (Wider)
            const finish = new THREE.Mesh(
-             new THREE.PlaneGeometry(10, 60),
+             new THREE.PlaneGeometry(10, 160),
              new THREE.MeshStandardMaterial({ map: finishTex, transparent: true, side: THREE.DoubleSide })
            );
            finish.rotation.x = -Math.PI / 2;
@@ -222,27 +227,44 @@ function Race3DCanvas() {
            scene.add(finish);
 
            // 3. Horses
-           const laneZ = [-15, 0, 15];
+           // Dynamic Lane Calculation for 8 horses
+           const laneSpacing = 15;
+           const totalWidth = laneSpacing * 8;
+           const startZ = -(totalWidth / 2) + (laneSpacing / 2);
+           
            horsesRef.current = [];
            mixersRef.current = [];
 
            raceDataRef.current.horses.forEach((hData, i) => {
+             const lanePos = startZ + (i * laneSpacing);
              // Clone the model properly for animation
              const horseInstance = SkeletonUtils.clone(horseModel);
              
              // Apply Dynamic Ground Alignment
              const startY = horseModel.userData.yCorrection || 0;
-             horseInstance.position.set(-50, startY, laneZ[i]); // Start X=-50
+             horseInstance.position.set(-50, startY, lanePos); // Start X=-50
              
-             // Apply Unique Color/Texture
-             const horseColors = [0x8B4513, 0x3d2b1f, 0xD2B48C]; // Brown, Dark Brown, Tan
-             const color = horseColors[i % horseColors.length];
+             // Apply Unique Color/Texture (Realistic Coats)
+             const coatColors = [
+               0x462c1d, // Bay (Dark Brown)
+               0x2a1d17, // Dark Bay / Black
+               0x783515, // Chestnut (Red-Brown)
+               0xccac68, // Palomino (Gold)
+               0xdadada, // Grey / White
+               0x8c6239, // Buckskin (Tan)
+               0x6d4033, // Roan
+               0x1a1a1a, // True Black
+             ];
+             const color = coatColors[i % coatColors.length];
              
              horseInstance.traverse((child) => {
                if (child.isMesh) {
                  // Clone material to ensure unique color per horse
                  child.material = child.material.clone(); 
                  child.material.color.setHex(color);
+                 // Improve Material Realism
+                 child.material.roughness = 0.9; // Fur is rough, not shiny
+                 child.material.metalness = 0.0; // Fur is not metallic
                }
              });
              
